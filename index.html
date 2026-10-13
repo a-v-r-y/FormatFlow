@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>File Converter — JPG, PNG, PDF, CSV, Excel & More</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<style>
+:root{
+  --bg:#F3F4EF; --surface:#FFFFFF; --surface2:#ECEEE6; --ink:#141815; --muted:#677067; --line:#DEE1D6;
+  --accent:#0E6B4F; --accent2:#E85D2F; --accent-soft:#DDEEE6; --accent-ink:#FFFFFF;
+  --chip:#141815; --shadow:0 18px 45px rgba(20,24,21,.09); --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#101311; --surface:#181D1A; --surface2:#212824; --ink:#EEF3EF; --muted:#9BA99E; --line:#2B352E; --accent:#2FBF8F; --accent-soft:#17382C; --chip:#EEF3EF; --shadow:0 18px 45px rgba(0,0,0,.35); }
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55}
+a{color:var(--accent);text-decoration:none}
+button,input,select,textarea{font:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 56px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:18px 0 8px;gap:12px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em}
+.logo-mark{width:36px;height:36px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-family:"JetBrains Mono",monospace;font-size:13px}
+.pill{font-size:12.5px;font-weight:700;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted)}
+.pill b{color:var(--accent)}
+.hero{padding:28px 0 20px;display:grid;grid-template-columns:1.35fr .65fr;gap:28px;align-items:end}
+@media(max-width:820px){.hero{grid-template-columns:1fr}}
+.hero h1{font-family:"Bricolage Grotesque",sans-serif;font-size:clamp(40px,6vw,68px);line-height:.95;letter-spacing:-.03em;margin:0 0 14px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:18px;color:var(--muted);margin:0;max-width:620px}
+.hero-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat strong{display:block;font-size:22px;letter-spacing:-.02em}
+.stat span{font-size:13px;color:var(--muted)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 18px}
+.preset{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:9px 13px;border-radius:999px;font-weight:700;font-size:13.5px;cursor:pointer}
+.preset:hover{border-color:var(--accent);color:var(--accent)}
+.preset.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.studio{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+.studio-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.studio-head strong{font-size:15px}
+.studio-grid{display:grid;grid-template-columns:1.65fr .85fr;gap:0}
+@media(max-width:900px){.studio-grid{grid-template-columns:1fr}}
+.mainpane{padding:20px}
+.sidepane{border-left:1px solid var(--line);background:var(--surface2);padding:20px}
+@media(max-width:900px){.sidepane{border-left:0;border-top:1px solid var(--line)}}
+.dropzone{border:2px dashed #B9C2B6;border-radius:18px;padding:34px 18px;text-align:center;background:color-mix(in srgb, var(--surface) 92%, var(--accent-soft));cursor:pointer;transition:.15s}
+.dropzone.drag{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.01)}
+.dropzone h2{margin:6px 0 6px;font-size:22px;letter-spacing:-.02em}
+.dropzone p{margin:0;color:var(--muted);font-size:14px}
+.drop-icon{width:52px;height:52px;margin:0 auto;border-radius:14px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:22px}
+.btn{appearance:none;border:0;cursor:pointer;border-radius:12px;padding:12px 16px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-dark{background:var(--ink);color:var(--bg)}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn-orange{background:var(--accent2);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-sm{padding:8px 11px;font-size:13px;border-radius:10px}
+.queue{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.empty{border:1px solid var(--line);border-radius:14px;padding:16px;color:var(--muted);font-size:14px;text-align:center}
+.filecard{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--surface)}
+@media(max-width:560px){.filecard{grid-template-columns:44px 1fr}}
+.thumb{width:52px;height:52px;border-radius:12px;object-fit:cover;background:var(--surface2);display:grid;place-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.fname{font-weight:700;font-size:14.5px;word-break:break-word;line-height:1.3}
+.fmeta{font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+.fcontrols{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.fcontrols select{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;font-size:13px}
+.status{font-size:12.5px;font-weight:700}
+.status.ok{color:var(--accent)} .status.err{color:#DC2626}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;color:var(--muted)}
+.sidepane h3{margin:0 0 6px;font-size:15px}
+.sidepane p{font-size:13.5px;color:var(--muted);margin:0 0 16px}
+.field{margin-bottom:16px}
+.field label{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:7px}
+.field label span{font-family:"JetBrains Mono",monospace;color:var(--accent);font-weight:600}
+.field select,.field input[type=text],.field input[type=number]{width:100%;padding:10px 11px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.check{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;font-weight:600;cursor:pointer}
+.check input{margin-top:3px;accent-color:var(--accent)}
+.progress{height:8px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;overflow:hidden;display:none;margin-top:12px}
+.progress i{display:block;height:100%;background:var(--accent);width:0%}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.note{font-size:12.5px;color:var(--muted);margin-top:12px}
+.section{margin-top:34px}
+.section h2{font-family:"Bricolage Grotesque",sans-serif;font-size:30px;letter-spacing:-.02em;margin:0 0 8px}
+.section>p{color:var(--muted);margin:0 0 18px;max-width:720px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.grid3,.grid2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.card h3{margin:0 0 8px;font-size:16px}
+.card p,.card li{color:var(--muted);font-size:14.5px}
+.card ul{margin:8px 0 0;padding-left:18px}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;padding:5px 7px;border-radius:999px;background:var(--surface2);border:1px solid var(--line)}
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+details+details{margin-top:10px}
+summary{font-weight:800;cursor:pointer}
+details p{color:var(--muted);font-size:14.5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:18px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:700;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:50;max-width:92vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.kbd{font-family:"JetBrains Mono",monospace;font-size:12px;background:var(--surface2);border:1px solid var(--line);padding:2px 6px;border-radius:6px}
+.cat-badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;letter-spacing:.02em;padding:5px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);margin-top:6px}
+.cat-badge i{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block}
+.cat-badge.idonly i{background:#B45309}
+.tax-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.tax-tools input[type=search]{flex:1;min-width:220px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600}
+.tax-filters{display:flex;gap:8px;flex-wrap:wrap}
+.tax-filter{border:1px solid var(--line);background:var(--surface);padding:9px 12px;border-radius:999px;font-weight:700;font-size:13px;cursor:pointer}
+.tax-filter.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){.cat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.cat-grid{grid-template-columns:1fr}}
+.cat-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.cat-card h3{margin:0 0 4px;font-size:15px;line-height:1.3}
+.cat-meta{font-size:12px;color:var(--muted);font-family:"JetBrains Mono",monospace;margin-bottom:8px}
+.badge{display:inline-block;font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px;letter-spacing:.02em}
+.badge-yes{background:var(--accent-soft);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+.badge-no{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A}
+@media(prefers-color-scheme:dark){.badge-no{background:#3A2A0A;color:#FCD34D;border-color:#57420F}}
+.cat-card details{border:0;background:transparent;padding:8px 0 0}
+.cat-card summary{font-size:13px;color:var(--accent)}
+.ext-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:170px;overflow:auto}
+.route-note{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo"><span class="logo-mark">&lt;/&gt;</span> File Converter</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill">🔒 <b>100% private</b> — files never leave your device</span><span class="pill">No sign-up · No limits</span></div>
+  </div>
+
+  <header class="hero">
+    <div>
+      <h1>One drop.<br><em>Any format.</em></h1>
+      <p>Turn a JPEG into a PDF, a PDF into pictures, a CSV into Excel — and dozens more. Drop any file and we first identify it against a 48-category registry (including compound types like <b>.tar.gz</b>), then only show conversions that genuinely work in your browser.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><strong>48</strong><span>categories indexed for detection</span></div>
+      <div class="stat"><strong>40+</strong><span>real conversion routes — no mocks</span></div>
+      <div class="stat"><strong>0</strong><span>files uploaded to a server</span></div>
+      <div class="stat"><strong>Batch</strong><span>convert many files at once</span></div>
+    </div>
+  </header>
+
+  <div class="presets" id="presets" aria-label="Popular conversions">
+    <button class="preset" data-from="image" data-to="pdf">JPG → PDF</button>
+    <button class="preset" data-from="pdf" data-to="png">PDF → PNG</button>
+    <button class="preset" data-from="pdf" data-to="jpg">PDF → JPG</button>
+    <button class="preset" data-from="image" data-to="png">JPG → PNG</button>
+    <button class="preset" data-from="image" data-to="jpg">PNG → JPG</button>
+    <button class="preset" data-from="image" data-to="webp">Image → WEBP</button>
+    <button class="preset" data-from="csv" data-to="xlsx">CSV → Excel</button>
+    <button class="preset" data-from="xlsx" data-to="csv">Excel → CSV</button>
+    <button class="preset" data-from="csv" data-to="json">CSV → JSON</button>
+    <button class="preset" data-from="json" data-to="csv">JSON → CSV</button>
+    <button class="preset" data-from="docx" data-to="pdf">Word → PDF</button>
+    <button class="preset" data-from="md" data-to="html">Markdown → HTML</button>
+    <button class="preset" data-from="json" data-to="yaml">JSON → YAML</button>
+    <button class="preset" data-from="srt" data-to="vtt">SRT → VTT</button>
+    <button class="preset" data-from="audio" data-to="wav">Audio → WAV</button>
+    <button class="preset" data-from="zip" data-to="tar">ZIP → TAR</button>
+  </div>
+
+  <section class="studio" id="studio">
+    <div class="studio-head"><strong>Converter studio</strong><span style="font-size:13px;color:var(--muted)" id="hint">Drop files below — we'll show every format each one can become.</span></div>
+    <div class="studio-grid">
+      <div class="mainpane">
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Add files">
+          <div class="drop-icon">⬆</div>
+          <h2>Drop files here, or click to browse</h2>
+          <p>Any file — we identify its category first, including compound extensions like .tar.gz and .nii.gz. Convertible types get real options; others are clearly marked identify-only. Paste with <span class="kbd">Ctrl / Cmd + V</span></p>
+          <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            <span class="btn btn-dark btn-sm">Choose files</span>
+            <button class="btn btn-ghost btn-sm" id="sampleBtn" type="button">Try with a sample image</button>
+          </div>
+        </div>
+        <input type="file" id="fileInput" multiple hidden>
+        <div class="toolbar">
+          <button class="btn btn-primary" id="convertAllBtn" disabled>Convert all</button>
+          <button class="btn btn-orange" id="combinePdfBtn" disabled>Combine images into one PDF</button>
+          <button class="btn btn-ghost" id="zipBtn" disabled>Download all as ZIP</button>
+          <button class="btn btn-ghost" id="clearBtn" disabled>Clear</button>
+        </div>
+        <div class="progress" id="progress"><i></i></div>
+        <div class="queue" id="queue"><div class="empty">No files yet. Add a file above and pick its new format — conversion takes a few seconds at most.</div></div>
+      </div>
+      <aside class="sidepane">
+        <h3>Settings</h3>
+        <p>Applied to every conversion where they make sense. You can change them and convert again.</p>
+        <div class="field"><label>Image quality <span id="qVal">92%</span></label><input type="range" id="quality" min="10" max="100" value="92"></div>
+        <div class="field"><label>JPG / WEBP background</label><select id="bgColor"><option value="#ffffff">White — best for documents</option><option value="#000000">Black</option><option value="#F3F4EF">Off-white</option></select><p class="note" style="margin-top:6px">Transparent PNGs need a background when they become JPG.</p></div>
+        <div class="field"><label>Max image width</label><select id="maxWidth"><option value="0">Original size</option><option value="2560">2560 px</option><option value="1920">1920 px</option><option value="1280">1280 px</option><option value="800">800 px — smaller files</option></select></div>
+        <div class="field"><label>PDF page size</label><select id="pdfSize"><option value="fit">Fit to image (no white borders)</option><option value="a4">A4</option><option value="letter">US Letter</option></select></div>
+        <div class="field"><label>PDF → image resolution <span id="dpiVal">2×</span></label><input type="range" id="dpi" min="1" max="3" step="0.5" value="2"></div>
+        <label class="check"><input type="checkbox" id="stripMeta" checked> Strip metadata — canvas &amp; PDF output removes EXIF / location data automatically</label>
+        <div class="field" style="margin-top:16px"><label>Helpful tip</label><p style="margin:0">Converting a multi-page PDF to images gives you a ZIP with one image per page, named in order.</p></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>What can it convert?</h2>
+    <p>Pick a file and the menu only shows formats that actually work for it — no dead ends, no fake buttons.</p>
+    <div class="grid3">
+      <div class="card"><h3>🖼️ Images</h3><p>Re-format, resize and compress photos and graphics. Transparent backgrounds are handled sensibly for JPG.</p><div class="tagrow"><span class="tag">JPG → PNG / WEBP / PDF / SVG</span><span class="tag">PNG → JPG / WEBP / PDF</span><span class="tag">WEBP → JPG / PNG</span><span class="tag">GIF · BMP · SVG → PNG / JPG</span></div></div>
+      <div class="card"><h3>📄 PDF</h3><p>Make a PDF from one image, combine many images into a single PDF, or turn PDF pages back into pictures and text.</p><div class="tagrow"><span class="tag">Images → PDF</span><span class="tag">PDF → PNG / JPG / WEBP</span><span class="tag">PDF → TXT</span></div></div>
+      <div class="card"><h3>📝 Documents &amp; text</h3><p>Word, Markdown and plain text conversions for notes, drafts and publishing.</p><div class="tagrow"><span class="tag">DOCX → HTML / TXT / PDF</span><span class="tag">MD → HTML / PDF / TXT</span><span class="tag">TXT → PDF / HTML</span><span class="tag">HTML → TXT / PDF</span></div></div>
+      <div class="card"><h3>📊 Data &amp; spreadsheets</h3><p>Move tables and structured data between tools without re-typing a single row.</p><div class="tagrow"><span class="tag">CSV ↔ JSON</span><span class="tag">CSV ↔ XLSX</span><span class="tag">JSON ↔ YAML</span><span class="tag">XML ↔ JSON</span><span class="tag">JSON → XLSX / HTML</span><span class="tag">XLSX → JSON / HTML</span></div></div>
+      <div class="card"><h3>🎵 Audio, subtitles &amp; archives</h3><p>New real routes added with the registry — each one produces a valid downloadable file, or it is not offered.</p><div class="tagrow"><span class="tag">MP3 / OGG / M4A → WAV</span><span class="tag">SRT ↔ VTT</span><span class="tag">ZIP → TAR</span><span class="tag">TAR → ZIP</span><span class="tag">TAR.GZ → ZIP</span></div><p style="margin-top:10px">Video, executables, disk images, ROMs, CAD, DICOM and similar categories are identified only — no conversion button is shown for them.</p></div>
+      <div class="card"><h3>⚡ Batch &amp; ZIP</h3><p>Add ten files, set each one's target, convert once, and take everything home in a single ZIP.</p><div class="tagrow"><span class="tag">Multi-file queue</span><span class="tag">Download all as ZIP</span></div></div>
+      <div class="card"><h3>🔒 Private by design</h3><p>There is no upload. Conversion uses your browser's own engine, so closing this tab removes every trace of your files.</p><div class="tagrow"><span class="tag">Works offline after loading*</span><span class="tag">No account</span></div></div>
+    </div>
+    <p class="note">*After the page and its libraries have loaded once.</p>
+  </section>
+
+  <section class="section" id="categories">
+    <h2>Browse all 48 categories</h2>
+    <p>This is the full detection registry. It is used only to organise the converter and to identify what you dropped — <b>not</b> to promise conversions. A category marked <span class="badge badge-yes">Convertible in browser</span> has at least one tested, real route below. Everything else is <span class="badge badge-no">Identify only</span>: we will recognise the file and tell you its category, but we will not show a fake conversion button.</p>
+    <div class="tax-tools">
+      <input type="search" id="taxSearch" placeholder="Search a category or extension — try  tar.gz, epub, dicom, .srt, fonts…" aria-label="Search categories and extensions">
+      <div class="tax-filters" role="group" aria-label="Filter categories">
+        <button class="tax-filter active" data-filter="all" type="button">All 48</button>
+        <button class="tax-filter" data-filter="yes" type="button">Convertible</button>
+        <button class="tax-filter" data-filter="no" type="button">Identify only</button>
+      </div>
+    </div>
+    <p class="note" id="taxCount" style="margin:0 0 12px"></p>
+    <div class="cat-grid" id="catGrid"></div>
+    <div class="card" style="margin-top:14px"><h3>How compound extensions are handled</h3><p>We never judge a file by its final suffix alone. The detector checks the longest match first: <span class="kbd">backup.tar.gz</span> is detected as <b>.tar.gz → Archives / Compound</b>, not as a plain .gz; <span class="kbd">brain.nii.gz</span> is <b>Medical Imaging</b>, not a generic archive; <span class="kbd">app.pkg.tar.zst</span> and <span class="kbd">archive.7z.001</span> are treated as single compound types. If a compound type has no real in-browser engine, it stays identify-only.</p></div>
+  </section>
+
+  <section class="section">
+    <h2>How it works</h2>
+    <div class="grid3">
+      <div class="card"><h3>1 — Add your file</h3><p>Drag it in, browse, or paste it. A thumbnail and its current format appear instantly.</p></div>
+      <div class="card"><h3>2 — Pick the new format</h3><p>Each file gets its own format menu, filtered to conversions that genuinely work for that file type.</p></div>
+      <div class="card"><h3>3 — Convert &amp; download</h3><p>Hit <b>Convert all</b>, then download files one by one — or all together as a ZIP.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Common questions</h2>
+    <details><summary>Is there a file-size limit?</summary><p>There's no artificial limit, but everything runs on your device's memory. Most phones and laptops handle images up to ~50 MB and PDFs up to a few hundred pages comfortably. For a very large PDF, converting to images creates one image per page — start with a smaller file if your device feels slow.</p></details>
+    <details><summary>Why can't I convert a PDF back into an editable Word file here?</summary><p>A PDF stores how a page <i>looks</i>, not the original document structure, so a faithful PDF → Word conversion needs a server-grade engine. Here you can reliably extract a PDF's text (PDF → TXT) and its pages as images — which covers most everyday needs honestly, instead of producing a broken .docx.</p></details>
+    <details><summary>Will converting JPG to PNG make my photo higher quality?</summary><p>No converter can add detail that isn't there. PNG will preserve exactly what's in the JPG (in a larger file), while JPG → JPG at a lower quality setting will shrink the file at some quality cost. Use the quality slider and max-width options when your goal is a smaller file for email or upload limits.</p></details>
+    <details><summary>What happens to transparent backgrounds?</summary><p>PNG and WEBP keep transparency. JPG has no transparency, so transparent areas are filled with the background colour you choose in Settings (white by default).</p></details>
+    <details><summary>Why does the site list 48 categories if it cannot convert all of them?</summary><p>The 48-category list is a detection registry, not a promise. It lets the site recognise what a file is — including executables, disk images, ROMs, CAD and DICOM files — and organise the browser. Conversion buttons only appear where a real in-browser engine exists and has been implemented here (images, PDF, documents, data, subtitles SRT↔VTT, audio→WAV, ZIP↔TAR and TAR.GZ→ZIP). For everything else the file card says “identify only” and offers no button, rather than producing a fake file.</p></details>
+    <details><summary>How are .tar.gz and .nii.gz different?</summary><p>Both end in .gz, but they are not the same thing. The detector checks compound extensions first with the longest match: .tar.gz is an archive (and can be repacked to ZIP here), while .nii.gz is a medical-imaging file and is identify-only. Judging by the final “.gz” alone would get that wrong.</p></details>
+    <details><summary>Does audio → WAV make a low-quality MP3 sound better?</summary><p>No. Decoding an MP3, OGG or M4A to WAV preserves what the browser can decode in an uncompressed file — it does not restore quality lost in the original compression. The file will usually be much larger.</p></details>
+  </section>
+
+  <p class="note" style="text-align:center;margin-top:30px">Built to be useful, not to collect your files. If a conversion fails, try a smaller file or a different target format.</p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; }
+var $=function(id){return document.getElementById(id)};
+var dropzone=$("dropzone"), input=$("fileInput"), queue=$("queue"), toast=$("toast");
+var items=[]; var idc=0; var preferredTo=null;
+
+function showToast(m){ toast.textContent=m; toast.classList.add("show"); setTimeout(function(){toast.classList.remove("show")},3200); }
+function fmtSize(b){ if(b<1024) return b+" B"; if(b<1048576) return (b/1024).toFixed(1)+" KB"; return (b/1048576).toFixed(2)+" MB"; }
+/* ===== 48-category registry (detection + browsing ONLY; routes are gated separately) ===== */
+var TAXONOMY=[
+["Text / Documents","txt text asc ans rtf md markdown rst tex latex log nfo info readme pdf ps eps xps oxps djvu djv doc docx docm dot dotx odt ott sxw wpd wps pages abw pmd p65 qxd qxp indd indt idml",1,"DOCX, PDF, TXT, MD & HTML routes below"],
+["E-books","epub mobi azw azw3 kfx djvu djv fb2 lit pdb prc cbz cbr cb7 cbt cba acsm ibooks lrf lrx opf ncx oxps",0,""],
+["Spreadsheets","xls xlsx xlsm xlsb xlt xltx xltm ods ots numbers csv tsv dif sylk slk fods gnumeric 123 wk1 wk3 wk4 wks",1,"CSV / XLSX / JSON / HTML table"],
+["Presentations","ppt pptx pptm pps ppsx ppsm pot potx potm odp otp key show sxi sti pez",0,""],
+["Raster Images","jpg jpeg jpe jfif pjpeg pjp png apng gif bmp dib webp avif heic heif hif jxl tif tiff ico cur icns dds tga pcx ppm pgm pbm pnm pam hdr exr pic sgi ras jp2 j2k jpf jpx jpm mj2 wdp hdp jxr flif qoi jng mng pict pct pntg xbm xpm xcf",1,"JPG / PNG / WEBP / PDF / SVG wrap"],
+["Vector Graphics","svg svgz ai eps emf wmf cgm cdr cmx afdesign afphoto afpub kra ora clip sai sai2 procreate ase aseprite sketch fig xd vsd vsdx odg otg drawio excalidraw",1,"SVG → PNG / JPG / WEBP / PDF"],
+["Camera RAW","raw arw cr2 cr3 nef nrw orf rw2 raf pef srw dng erf kdc mos mrw 3fr fff iiq rwl x3f cap eip mef mdc",0,""],
+["Audio","mp3 wav wave aiff aif aifc flac alac aac m4a m4b m4p mp4a ogg oga opus wma amr awb 3ga mid midi kar rmi mod xm it s3m mt2 umx mo3 mpc mpp ape wv tta tak dsf dff caf au snd voc 8svx ra ram ac3 eac3 dts dtshd mlp thd spx mka aa aax",1,"Browser-decodable audio → WAV (PCM)"],
+["Playlists","m3u m3u8 pls asx xspf wpl cue lrc",0,""],
+["Video","mp4 m4v mkv avi mov wmv flv f4v f4p f4a f4b webm mpeg mpg mpe mpv m2v m1v m2p m2ts mts ts m2t vob ogv 3gp 3g2 asf rm rmvb divx xvid yuv roq nsv amv drc wtv ivf nut y4m mxf gxf lxf r3d braw ari crm cine dv dif mjp mjpeg mjpg",0,""],
+["Codecs / Streaming","h264 264 avc h265 265 hevc av1 vp8 vp9 mpd ism isml f4m manifest ismc",0,""],
+["Subtitles","srt ass ssa sub idx smi sami sbv ttml dfxp stl scc mcc cap vtt webvtt",1,"SRT ↔ VTT"],
+["Web Frontend","html htm xhtml shtml css scss sass less styl js mjs cjs jsx ts tsx vue svelte astro wasm wat webmanifest appcache htaccess htpasswd",1,"HTML → TXT / PDF"],
+["Backend Programming","php phtml php3 php4 php5 phar py pyw pyi pyx pxd pxi rb erb rake gemspec java kt kts scala sc groovy gvy gy gsh go rs swift m mm cs csx vb fs fsi fsx fsscript ex exs erl hrl pl pm t lua clj cljs cljc edn",0,""],
+["C / C++ / Systems","c h i ii cc hh cpp cxx hpp hxx inl ipp ixx s asm inc zig nim d di cr odin v sv svh vh vhd vhdl",0,""],
+["Other Scripting","r rmd qmd jl f for f77 f90 f95 f03 f08 f18 ftn fpp cob cbl cpy hs lhs elm purs idr agda lean lisp lsp cl scm ss rkt el tcl tk awk sed sh bash zsh fish ksh csh tcsh ps1 psm1 psd1 bat cmd vbs vbe wsf wsh hta exp nse rockspec",0,""],
+["Compiled / Libraries","o obj a lib so dll dylib exe elf out bc ll pch gch idb ipch ilk map pdb wasm class jar war ear dex odex oat vdex art rlib rmeta pyc pyo pyd whl egg",0,""],
+["Project / Build","sln slnx csproj vbproj fsproj vcxproj props targets resx xaml baml xap nuspec nupkg snupkg pom gradle sbt cabal cargo mod sum gemfile podfile podspec makefile mk cmake bazel bzl nix tf tfvars hcl dockerfile containerfile gitignore gitattributes gitmodules gitkeep editorconfig npmrc nvmrc yarnrc pnp lock",0,""],
+["Data / Config","json jsonc json5 jsonl ndjson jsonld xml xsd xsl xslt xslfo dtd yaml yml toml ini cfg conf config properties env plist reg proto avsc graphql gql thrift fbs capnp rdf owl ttl n3 nt nq trig trix geojson topojson kml kmz gpx",1,"JSON ↔ YAML, XML ↔ JSON, JSON ↔ CSV"],
+["Databases","db db3 sqlite sqlite3 sql accdb mdb accde accdr accdt ldb sst rdb aof bson wt ibd frm myd myi ibdata mdf ndf ldf bak trn dump bacpac dacpac ispac dtsx parquet avro orc arrow feather fst qs",0,""],
+["Scientific Data","mat mlx nb nbp wl wls cdf root hep lhe hepmc slha evt fits fit fts h5 hdf5 hdf nc netcdf grib grb sav por sas7bdat dta do sps sas xpt arff rds rdata rda ipynb pkl pickle joblib npy npz",0,""],
+["ML / AI Models","pt pth ckpt safetensors onnx pb pbtxt prototxt caffemodel tflite lite mlmodel mlpackage keras gguf ggml ggjt engine plan trt coreml mnn param model weights index meta tfevents event prof trace tokenizer vocab merges spm sentencepiece",0,""],
+["Genomic Data","fasta fa fna faa fastq fq sam bam cram vcf bcf gff gff3 gtf bed bigwig bw bigbed bb wig wiggle maf chain 2bit narrowpeak broadpeak bedgraph cool mcool hic loom h5ad h5seurat seurat mtx fcs cel idat",0,""],
+["Chemistry / Molecular","pdb ent cif mmcif mol sdf mol2 smi smiles inchi pqr gro pdbqt mzml mzxml mzdata wiff spc jdx dx fid ser bruker opju opj wdf mpr mpt mps",0,""],
+["Medical Imaging","dcm dicom nii nrrd mha mhd vti vtk vtu vtp vtr vts edf bdf vhdr vmrk eeg set fif snirf nirs xdf xdfz",0,""],
+["GIS / Mapping","shp shx dbf prj sbn sbx gdb gpkg gml gpx kml kmz osm pbf mbtiles pmtiles mvt geotiff vrt ecw sid dem dtm las laz bag xyz pts ptx fit tcx nmea ubx rinex obs nav sp3 clk ionex atx rnx crx",0,""],
+["CAD / 3D Models","obj mtl stl fbx gltf glb dae 3ds blend ma mb max c4d lwo lws 3dm 3mf amf wrl vrml x3d usd usda usdc usdz abc ply off step stp iges igs sat sab 3dxml dwg dxf dgn ifc ifczip ifcxml rvt rfa rte rft ipt iam idw ipn sldprt sldasm slddrw prt asm drw catpart catproduct catdrawing f3d f3z skp layout shapr par psm neu",0,""],
+["3D Printing / CNC","gcode nc tap cnc hex plt hpgl gerber gbr gbx gbl gtl gts gto gko drl xln sch brd pcb pcbdoc schdoc kicad_pcb kicad_sch kicad_mod kicad_pro kicad_wks dsn ses net cir sp spice tr0 ac0 s2p s4p touchstone vcd lxt lxt2 wlf fsdb saif gds gdsii oas oasis spef sdc upf cpf xdc ucf qpf qsf sof pof bit mcs jed jedec svf xsvf stapl srec s19 mot",0,""],
+["Game Assets","uasset umap unity unitypackage asset prefab mat tscn tres pck godot blend1 pak utoc ucas bundle assetbundle ress resource resources atlas spriteatlas anim controller font fnt bank wem bnk sbsar sbs spp substance",0,""],
+["Game Saves / ROMs","sav save state replay dem rofl rep ghost nes sfc smc gba gbc gb nds cia nsp xci iso cso pbp wad dol gcm rvz rpx wud wux wbfs z64 v64 n64 chd gdi rom bin cue",0,""],
+["Fonts","ttf otf woff woff2 eot fon fnt pfa pfb afm pfm sfd ufo vfb vfc glyphs designspace bdf pcf snf dfont suit chr shx",0,""],
+["Archives","zip zipx rar r00 7z arj ace alz arc ark cab chm cpio ear gca ha hki ice jar kgb lzh lha lzx pak paq6 paq7 paq8 pea pim pit qda rk sda sea shar shk sit sitx sqx tar tgz tbz tbz2 txz tlz tz taz uc uc0 uc1 uc2 ucn ur2 ue2 uca wim xar xp3 yz1 zoo zpaq zz gz bz bz2 xz lz lzma lzo z lz4 zst br sz",1,"ZIP → TAR, TAR → ZIP, TAR.GZ → ZIP"],
+["Disk Images / VMs","img nrg mdf mds ccd sub isz udf vhd vhdx vmdk vdi qcow qcow2 ova ovf vma esd swm gho tib adi vib dmg sparseimage sparsebundle toast cdr vfd ima flp vmx vbox vmsd vmsn nvram vmss vmem vmsw hdd pvm utm",0,""],
+["Executables / Installers","com msi msp mst app pkg deb rpm apk aab ipa appx msix appxbundle msixbundle apks xapk obb appimage flatpak snap run efi sys drv ocx cpl scr ko kext aar gem conda",0,""],
+["OS / System Files","dat ini settings prefs journal syslog evtx etl dmp dump core stackdump crash ips panic diag chk swp swo lnk url webloc desktop alias service socket mount timer target unit manifest",0,""],
+["Mobile App Files","mobileconfig provisionprofile entitlements strings stringsdict xcassets car storyboard xib nib framework xcframework appex",0,""],
+["Localization","po pot mo xliff xlf qm arb icu dic aff lex",0,""],
+["Email / Contacts / Calendars","eml msg oft pst ost mbox mbx emlx ics ical ifb vcs vcf vcard contact p7m p7s p7c",0,""],
+["Web Archives / Network","mht mhtml webarchive har pcap pcapng cap netlog profraw gcda gcno coverage lcov sarif tap junit trx testlog",0,""],
+["Security / Certificates","pem crt cer der p7b p7c p12 pfx p8 csr jks keystore asc gpg pgp sig pub key ovpn kdb kdbx psafe3 vault age enc encrypted crypt crypt14 crypt15 wallet keychain token jwt jceks bks",0,""],
+["Temp / Cache / Partial","tmp temp bak backup bkp old save swp swo lock pid cache seed part partial crdownload download 001 002 003 part1 part2 aa ab ac ad ae af ag ah ai aj ak al am an ao ap aq ar as at au av aw ax ay az z01 z02 r01 r02",0,""],
+["Checksums / Patches","md5 sha1 sha256 sha512 crc b3 blake3 sfv par2 patch diff rej orig checksum mtree torrent metalink meta4 nzb",0,""],
+["Icons / Animation","ico icns cur ani ttf otf woff woff2 eot fon fnt atlas spriteatlas ase aseprite gif apng svg svgz lottie json riv skottie",0,""],
+["Shaders / Materials","glsl vert frag geom tesc tese comp hlsl fx cg shader shadergraph shadervariants compute material vfx vfxgraph spv ptx cubin fatbin air metallib dxil dxbc fxo",0,""],
+["Robotics / Simulation","urdf sdf world launch bag mcap pcd xdmf xmf foam cas inp cgns msh msh2 msh4 op2 odb sim",0,""],
+["Web Links / Shortcuts","url webloc lnk desktop appref-ms torrent magnet metalink meta4 nzb crdownload download part partial",0,""],
+["Misc App-Specific","data unknown file blob store metadata catalog pack archive snapshot checkpoint session workspace project solution",0,""],
+["Compound Extensions","tar.gz tar.bz2 tar.xz tar.zst tar.lz4 tar.br tar.lz tar.lzma tar.z nii.gz nii.bz2 nii.zst 7z.001 zip.001 nkit.iso pkg.tar.zst copc.laz",1,"Longest-match detection; TAR.GZ → ZIP is real, others identify-only"]
+];
+var COMPOUND=["tar.gz","tar.bz2","tar.xz","tar.zst","tar.lz4","tar.br","tar.lz","tar.lzma","tar.z","nii.gz","nii.bz2","nii.zst","7z.001","zip.001","nkit.iso","pkg.tar.zst","copc.laz","data-00000-of-00001"];
+var EXT2CAT={}; TAXONOMY.forEach(function(c){ c[1].split(/\s+/).forEach(function(e){ if(!EXT2CAT[e]) EXT2CAT[e]=c[0]; }); });
+function detectInfo(name){
+  var low=name.toLowerCase();
+  var sorted=COMPOUND.slice().sort(function(a,b){return b.length-a.length});
+  for(var i=0;i<sorted.length;i++){ var cp=sorted[i]; if(low.endsWith("."+cp)){ var cat = cp.indexOf("nii.")===0 ? "Medical Imaging" : (cp.indexOf("copc.")===0 ? "GIS / Mapping" : "Archives"); if(cp==="pkg.tar.zst") cat="Executables / Installers"; return {ext:cp, compound:true, category:cat}; } }
+  var m=low.match(/\.([a-z0-9+_-]+)$/); var e=m?m[1]:"";
+  return {ext:e, compound:false, category: EXT2CAT[e]||"Misc App-Specific"};
+}
+function extOf(name){ return detectInfo(name).ext; }
+function baseOf(name){ var d=detectInfo(name); return d.ext? name.slice(0, name.length-d.ext.length-1): name.replace(/\.[^.]+$/,""); }
+function opts(){ return { quality: parseInt($("quality").value,10)/100, bg:$("bgColor").value, maxWidth: parseInt($("maxWidth").value,10), pdfSize:$("pdfSize").value, scale: parseFloat($("dpi").value) }; }
+$("quality").addEventListener("input",function(){ $("qVal").textContent=this.value+"%"; });
+$("dpi").addEventListener("input",function(){ $("dpiVal").textContent=this.value+"×"; });
+
+function categoryOf(file){
+  var info=detectInfo(file.name), e=info.ext, t=file.type||"";
+  if(info.compound){ if(e==="tar.gz") return "targz"; return "compound"; }
+  if(e==="tar") return "tar"; if(e==="zip") return "zip";
+  if(e==="srt") return "srt"; if(e==="vtt"||e==="webvtt") return "vtt";
+  if(e==="yaml"||e==="yml") return "yaml"; if(e==="xml") return "xml";
+  if(["mp3","wav","wave","ogg","oga","opus","m4a","flac","aac","aiff","aif"].indexOf(e)>-1 || t.indexOf("audio/")===0) return "audio";
+  if(t.indexOf("image/")===0 || ["jpg","jpeg","png","webp","gif","bmp","svg","avif","jfif"].indexOf(e)>-1) return "image";
+  if(e==="svg") return "image";
+  if(e==="pdf"||t==="application/pdf") return "pdf";
+  if(e==="docx") return "docx";
+  if(e==="md"||e==="markdown") return "md";
+  if(e==="csv"||e==="tsv") return "csv";
+  if(e==="json"||e==="geojson") return "json";
+  if(e==="xlsx"||e==="xls") return "xlsx";
+  if(e==="html"||e==="htm") return "html";
+  if(e==="txt"||t.indexOf("text/plain")===0) return "txt";
+  return "other";
+}
+function targetsFor(cat, ext){
+  switch(cat){
+    case "image": {
+      var all=[["jpg","JPG — photo, small file"],["png","PNG — lossless, transparency"],["webp","WEBP — modern, smallest"],["pdf","PDF — document"],["svg","SVG — image wrapped in SVG"]];
+      return all.filter(function(x){return x[0]!==ext && !(ext==="jpeg"&&x[0]==="jpg")});
+    }
+    case "pdf": return [["png","PNG — one image per page"],["jpg","JPG — one image per page"],["webp","WEBP — one image per page"],["txt","TXT — extracted text"]];
+    case "docx": return [["html","HTML"],["txt","TXT — plain text"],["pdf","PDF"]];
+    case "md": return [["html","HTML"],["pdf","PDF"],["txt","TXT — plain text"]];
+    case "txt": return [["pdf","PDF"],["html","HTML"],["md","Markdown (.md)"]];
+    case "html": return [["txt","TXT — plain text"],["pdf","PDF"]];
+    case "csv": return [["json","JSON"],["xlsx","Excel (.xlsx)"],["html","HTML table"],["pdf","PDF table"]];
+    case "json": return [["csv","CSV"],["yaml","YAML"],["xml","XML"],["xlsx","Excel (.xlsx)"],["html","HTML table"],["txt","TXT — formatted"]];
+    case "yaml": return [["json","JSON"]];
+    case "xml": return [["json","JSON"]];
+    case "xlsx": return [["csv","CSV"],["json","JSON"],["html","HTML table"]];
+    case "srt": return [["vtt","VTT — WebVTT subtitles"]];
+    case "vtt": return [["srt","SRT — SubRip subtitles"]];
+    case "audio": return ext==="wav"? [] : [["wav","WAV — uncompressed PCM (browser-decoded)"]];
+    case "zip": return [["tar","TAR — repacked, uncompressed archive"]];
+    case "tar": return [["zip","ZIP — repacked archive"]];
+    case "targz": return [["zip","ZIP — decompressed & repacked"]];
+    default: return [];
+  }
+}
+
+function addFiles(files){
+  var added=0;
+  Array.prototype.forEach.call(files,function(f){
+    var cat=categoryOf(f);
+    var info=detectInfo(f.name);
+    var item={id:++idc, file:f, cat:cat, ext:info.ext, compound:info.compound, taxCat:info.category, to:null, result:null, status:"", err:false, thumb:null};
+    var tg=targetsFor(cat,item.ext);
+    if(preferredTo && tg.some(function(x){return x[0]===preferredTo})) item.to=preferredTo;
+    else if(tg.length) item.to=tg[0][0];
+    if(cat==="image" && f.type.indexOf("image/")===0 && f.type!=="image/svg+xml"){ item.thumb=URL.createObjectURL(f); }
+    items.push(item); added++;
+  });
+  render();
+  if(added) showToast(added+(added===1?" file":" files")+" added — pick a format for each, then Convert all.");
+}
+function render(){
+  $("convertAllBtn").disabled = !items.some(function(i){return targetsFor(i.cat,i.ext).length});
+  $("clearBtn").disabled = !items.length;
+  $("zipBtn").disabled = !items.some(function(i){return i.result});
+  var imgs=items.filter(function(i){return i.cat==="image"});
+  $("combinePdfBtn").disabled = imgs.length<2;
+  if(!items.length){ queue.innerHTML='<div class="empty">No files yet. Add a file above and pick its new format — conversion takes a few seconds at most.</div>'; return; }
+  queue.innerHTML="";
+  items.forEach(function(item){
+    var tg=targetsFor(item.cat,item.ext);
+    var card=document.createElement("div"); card.className="filecard";
+    var thumb=document.createElement("div"); thumb.className="thumb";
+    if(item.thumb){ var im=document.createElement("img"); im.src=item.thumb; im.alt=""; thumb.appendChild(im); } else { thumb.textContent=(item.ext||"?").toUpperCase(); }
+    var mid=document.createElement("div");
+    var ctrls = tg.length ? '<div class="fcontrols"><span style="font-size:13px;color:var(--muted);font-weight:700">Convert to</span><select data-act="to" data-id="'+item.id+'">'+tg.map(function(x){return '<option value="'+x[0]+'"'+(item.to===x[0]?' selected':'')+'>'+x[1]+'</option>'}).join("")+'</select>'+(item.result?'<span class="status ok">✓ Ready — '+fmtSize(item.result.blob.size)+'</span>':'')+(item.status?'<span class="status '+(item.err?'err':'')+'">'+item.status+'</span>':'')+'</div>' : '<div class="fcontrols"><span class="status err">Identified as '+item.taxCat+' — no reliable in-browser conversion for this type, so no conversion is offered. That is intentional: we do not create fake outputs.</span></div>';
+    mid.innerHTML='<div class="fname"></div><div class="fmeta">'+fmtSize(item.file.size)+' · .'+(item.ext||"file")+(item.compound?' · compound extension':'')+'</div><span class="cat-badge '+(tg.length?'':'idonly')+'"><i></i>'+item.taxCat+(tg.length?' · convertible':' · identify only')+'</span>'+ctrls;
+    mid.querySelector(".fname").textContent=item.file.name;
+    var acts=document.createElement("div"); acts.className="actions";
+    if(item.result){ var dl=document.createElement("button"); dl.className="btn btn-primary btn-sm"; dl.textContent="Download"; dl.onclick=function(){download(item.result.blob,item.result.name)}; acts.appendChild(dl); }
+    var rm=document.createElement("button"); rm.className="iconbtn"; rm.textContent="✕"; rm.title="Remove"; rm.onclick=function(){ items=items.filter(function(x){return x.id!==item.id}); render(); };
+    acts.appendChild(rm);
+    card.appendChild(thumb); card.appendChild(mid); card.appendChild(acts);
+    queue.appendChild(card);
+  });
+  queue.querySelectorAll('select[data-act="to"]').forEach(function(s){ s.addEventListener("change",function(){ var it=items.find(function(x){return x.id==parseInt(this.dataset.id,10)},this); }); });
+  // fix binding with proper closure
+  queue.querySelectorAll('select[data-act="to"]').forEach(function(s){ s.onchange=function(){ var it=items.find(function(x){return x.id===parseInt(s.dataset.id,10)}); if(it){ it.to=s.value; it.result=null; it.status=""; render(); } }; });
+}
+function download(blob,name){ var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},800); }
+
+/* ---------- image helpers ---------- */
+function loadImage(file){ return new Promise(function(res,rej){ var url=URL.createObjectURL(file); var img=new Image(); img.onload=function(){res({img:img,url:url})}; img.onerror=function(){URL.revokeObjectURL(url); rej(new Error("Could not read that image."))}; img.src=url; }); }
+function canvasToBlob(c,type,q){ return new Promise(function(res){ c.toBlob(function(b){res(b)},type,q); }); }
+async function imageToImage(file,target,o){
+  if(extOf(file.name)==="svg" || file.type==="image/svg+xml"){
+    var txt=await file.text(); var svgBlob=new Blob([txt],{type:"image/svg+xml"});
+    var url=URL.createObjectURL(svgBlob); var img=new Image();
+    await new Promise(function(res,rej){ img.onload=res; img.onerror=rej; img.src=url; });
+    var w=img.width||800, h=img.height||600;
+    var c=document.createElement("canvas"); c.width=w; c.height=h; var ctx=c.getContext("2d");
+    if(target==="jpg"){ ctx.fillStyle=o.bg; ctx.fillRect(0,0,w,h); }
+    ctx.drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+    return canvasToBlob(c, target==="jpg"?"image/jpeg":target==="webp"?"image/webp":"image/png", o.quality);
+  }
+  var loaded=await loadImage(file); var img=loaded.img;
+  var w=img.naturalWidth, h=img.naturalHeight;
+  if(o.maxWidth && w>o.maxWidth){ h=Math.round(h*o.maxWidth/w); w=o.maxWidth; }
+  var c=document.createElement("canvas"); c.width=w; c.height=h; var ctx=c.getContext("2d");
+  if(target==="jpg"){ ctx.fillStyle=o.bg; ctx.fillRect(0,0,w,h); }
+  ctx.drawImage(img,0,0,w,h); URL.revokeObjectURL(loaded.url);
+  return canvasToBlob(c, target==="jpg"?"image/jpeg":target==="webp"?"image/webp":"image/png", o.quality);
+}
+async function imageToSvgWrap(file){
+  var data=await new Promise(function(res){ var r=new FileReader(); r.onload=function(){res(r.result)}; r.readAsDataURL(file); });
+  var loaded=await loadImage(file).catch(function(){return null});
+  var w=loaded?loaded.img.naturalWidth:800, h=loaded?loaded.img.naturalHeight:600; if(loaded) URL.revokeObjectURL(loaded.url);
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'"><image href="'+data+'" width="'+w+'" height="'+h+'"/></svg>';
+  return new Blob([svg],{type:"image/svg+xml"});
+}
+async function imagesToPdfBlob(files,o){
+  var JsPDF=window.jspdf.jsPDF; var first=true; var doc=null;
+  for(var i=0;i<files.length;i++){
+    var f=files[i]; var loaded=await loadImage(f); var img=loaded.img;
+    var dataUrl; // re-encode as jpeg/png data url via canvas
+    var cv=document.createElement("canvas"); cv.width=img.naturalWidth; cv.height=img.naturalHeight; var cx=cv.getContext("2d"); cx.fillStyle="#ffffff"; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(img,0,0); dataUrl=cv.toDataURL("image/jpeg",0.92); URL.revokeObjectURL(loaded.url);
+    var iw=img.naturalWidth, ih=img.naturalHeight;
+    if(o.pdfSize==="fit"){
+      var pw=iw*72/96, ph=ih*72/96; // px -> pt approx
+      if(first){ doc=new JsPDF({unit:"pt",format:[pw,ph],orientation:pw>ph?"landscape":"portrait"}); first=false; } else { doc.addPage([pw,ph], pw>ph?"landscape":"portrait"); }
+      doc.addImage(dataUrl,"JPEG",0,0,pw,ph);
+    } else {
+      var fmt=o.pdfSize; if(first){ doc=new JsPDF({unit:"pt",format:fmt}); first=false; } else { doc.addPage(fmt); }
+      var pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight(); var margin=28;
+      var scale=Math.min((pageW-margin*2)/iw,(pageH-margin*2)/ih); var dw=iw*scale, dh=ih*scale;
+      doc.addImage(dataUrl,"JPEG",(pageW-dw)/2,(pageH-dh)/2,dw,dh);
+    }
+  }
+  return doc.output("blob");
+}
+/* ---------- PDF ---------- */
+async function pdfToImages(file,target,o){
+  var buf=await file.arrayBuffer(); var pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  var blobs=[];
+  for(var p=1;p<=pdf.numPages;p++){
+    var page=await pdf.getPage(p); var vp=page.getViewport({scale:o.scale});
+    var c=document.createElement("canvas"); c.width=vp.width; c.height=vp.height; var ctx=c.getContext("2d");
+    if(target==="jpg"){ ctx.fillStyle=o.bg; ctx.fillRect(0,0,c.width,c.height); }
+    await page.render({canvasContext:ctx,viewport:vp}).promise;
+    var b=await canvasToBlob(c, target==="jpg"?"image/jpeg":target==="webp"?"image/webp":"image/png", o.quality);
+    blobs.push({blob:b, name: baseOf(file.name)+"-page-"+String(p).padStart(2,"0")+"."+target});
+  }
+  if(blobs.length===1) return {blob:blobs[0].blob, name:blobs[0].name};
+  var zip=new JSZip(); blobs.forEach(function(x){ zip.file(x.name,x.blob); });
+  var zb=await zip.generateAsync({type:"blob"}); return {blob:zb, name:baseOf(file.name)+"-pages.zip"};
+}
+async function pdfToText(file){
+  var buf=await file.arrayBuffer(); var pdf=await pdfjsLib.getDocument({data:buf}).promise; var out=[];
+  for(var p=1;p<=pdf.numPages;p++){ var page=await pdf.getPage(p); var tc=await page.getTextContent(); out.push(tc.items.map(function(it){return it.str}).join(" ")); }
+  return new Blob([out.join("\n\n")],{type:"text/plain"});
+}
+/* ---------- text / docs ---------- */
+function textToPdfBlob(title, text){
+  var JsPDF=window.jspdf.jsPDF; var doc=new JsPDF({unit:"pt",format:"a4"});
+  doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text(title.slice(0,80),48,56);
+  doc.setFont("helvetica","normal"); doc.setFontSize(11);
+  var lines=doc.splitTextToSize(text, 499); var y=82;
+  lines.forEach(function(ln){ if(y>790){ doc.addPage(); y=56; } doc.text(ln,48,y); y+=15; });
+  return doc.output("blob");
+}
+function escapeHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+/* --- Subtitles: SRT <-> VTT (real text transform) --- */
+function srtToVtt(t){ return "WEBVTT\n\n"+t.replace(/\r\n/g,"\n").replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g,"$1.$2"); }
+function vttToSrt(t){ return t.replace(/^WEBVTT[^\n]*\n+/,"").replace(/(\d{2}:\d{2}:\d{2})\.(\d{3})/g,"$1,$2").replace(/\r\n/g,"\n"); }
+/* --- Audio: decode via Web Audio, encode 16-bit PCM WAV --- */
+function encodeWav(buffer){
+  var ch=Math.min(2,buffer.numberOfChannels), sr=buffer.sampleRate, len=buffer.length*ch*2+44, ab=new ArrayBuffer(len), v=new DataView(ab);
+  function ws(o,s){ for(var i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); }
+  ws(0,"RIFF"); v.setUint32(4,len-8,true); ws(8,"WAVEfmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,ch,true); v.setUint32(24,sr,true); v.setUint32(28,sr*ch*2,true); v.setUint16(32,ch*2,true); v.setUint16(34,16,true); ws(36,"data"); v.setUint32(40,len-44,true);
+  var chans=[]; for(var c=0;c<ch;c++) chans.push(buffer.getChannelData(c));
+  var off=44; for(var i=0;i<buffer.length;i++){ for(var c2=0;c2<ch;c2++){ var s=Math.max(-1,Math.min(1,chans[c2][i])); v.setInt16(off,s<0?s*0x8000:s*0x7FFF,true); off+=2; } }
+  return new Blob([ab],{type:"audio/wav"});
+}
+async function audioToWav(file){ var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) throw new Error("Web Audio is not available in this browser."); var ctx=new Ctx(); try{ var buf=await ctx.decodeAudioData(await file.arrayBuffer()); return encodeWav(buf); } finally{ if(ctx.close) ctx.close(); } }
+/* --- TAR writer/parser (ustar, real repacking) --- */
+function tarHeader(name,size){
+  var ab=new ArrayBuffer(512), u=new Uint8Array(ab), enc=new TextEncoder();
+  function put(off,str,len){ var b=enc.encode(str.slice(0,len)); u.set(b,off); }
+  function oct(off,val,len){ put(off, val.toString(8).padStart(len-1,"0")+"\0", len); }
+  put(0,name,100); oct(100,420,8); oct(108,0,8); oct(116,0,8); oct(124,size,12); oct(136,Math.floor(Date.now()/1000),12); u[156]=53; put(257,"ustar\0",6); put(263,"00",2);
+  var sum=0; for(var i=0;i<512;i++) sum+= (i>=148&&i<156)?32:u[i]; put(148, sum.toString(8).padStart(6,"0")+"\0 ",8); return ab;
+}
+async function zipToTar(file){ var zip=await JSZip.loadAsync(file); var parts=[]; for(var name in zip.files){ var e=zip.files[name]; if(e.dir) continue; var data=await e.async("uint8array"); parts.push(tarHeader(name,data.length)); parts.push(data.buffer.slice(data.byteOffset,data.byteOffset+data.length)); var pad=(512-(data.length%512))%512; if(pad) parts.push(new ArrayBuffer(pad)); } parts.push(new ArrayBuffer(1024)); return new Blob(parts,{type:"application/x-tar"}); }
+function parseTar(ab){
+  var u=new Uint8Array(ab), out=[], off=0, dec=new TextDecoder();
+  function str(o,l){ return dec.decode(u.slice(o,o+l)).replace(/\0.*$/,"").trim(); }
+  function oct(o,l){ var s=str(o,l); return s?parseInt(s,8):0; }
+  while(off+512<=u.length){ var name=str(off,100); if(!name) break; var size=oct(off+124,12); var prefix=str(off+345,155); if(prefix) name=prefix+"/"+name; out.push({name:name, data:u.slice(off+512,off+512+size)}); off+=512+Math.ceil(size/512)*512; }
+  return out;
+}
+async function tarToZip(ab){ var entries=parseTar(ab); var zip=new JSZip(); entries.forEach(function(e){ zip.file(e.name, e.data); }); return zip.generateAsync({type:"blob"}); }
+async function targzToZip(file){
+  if(!window.DecompressionStream) throw new Error("This browser cannot decompress .gz in-page (DecompressionStream unavailable). Try Chrome/Edge.");
+  var stream=file.stream().pipeThrough(new DecompressionStream("gzip")); var ab=await new Response(stream).arrayBuffer(); return tarToZip(ab);
+}
+async function convertOne(item){
+  var f=item.file, to=item.to, o=opts(), name=baseOf(f.name);
+  if(item.cat==="image"){
+    if(to==="pdf"){ var b1=await imagesToPdfBlob([f],o); return {blob:b1,name:name+".pdf"}; }
+    if(to==="svg"){ return {blob:await imageToSvgWrap(f), name:name+".svg"}; }
+    return {blob:await imageToImage(f,to,o), name:name+"."+to};
+  }
+  if(item.cat==="pdf"){
+    if(to==="txt") return {blob:await pdfToText(f), name:name+".txt"};
+    return pdfToImages(f,to,o);
+  }
+  if(item.cat==="docx"){
+    var buf=await f.arrayBuffer();
+    if(to==="html"){ var r1=await mammoth.convertToHtml({arrayBuffer:buf}); return {blob:new Blob(["<!doctype html><html><body>"+r1.value+"</body></html>"],{type:"text/html"}), name:name+".html"}; }
+    var r2=await mammoth.extractRawText({arrayBuffer:buf});
+    if(to==="txt") return {blob:new Blob([r2.value],{type:"text/plain"}), name:name+".txt"};
+    return {blob:textToPdfBlob(f.name, r2.value), name:name+".pdf"};
+  }
+  if(item.cat==="audio"){ return {blob:await audioToWav(f), name:name+".wav"}; }
+  if(item.cat==="zip"){ return {blob:await zipToTar(f), name:name+".tar"}; }
+  if(item.cat==="tar"){ return {blob:await tarToZip(await f.arrayBuffer()), name:name+".zip"}; }
+  if(item.cat==="targz"){ return {blob:await targzToZip(f), name:name+".zip"}; }
+  var text=await f.text();
+  if(item.cat==="srt"){ return {blob:new Blob([srtToVtt(text)],{type:"text/vtt"}), name:name+".vtt"}; }
+  if(item.cat==="vtt"){ return {blob:new Blob([vttToSrt(text)],{type:"application/x-subrip"}), name:name+".srt"}; }
+  if(item.cat==="yaml"){ var yobj=jsyaml.load(text); return {blob:new Blob([JSON.stringify(yobj,null,2)],{type:"application/json"}), name:name+".json"}; }
+  if(item.cat==="xml"){
+    var doc=new DOMParser().parseFromString(text,"text/xml");
+    if(doc.querySelector("parsererror")) throw new Error("That XML could not be parsed.");
+    function x2o(el){ var o={}; if(el.attributes&&el.attributes.length){ o["@attributes"]={}; for(var a=0;a<el.attributes.length;a++) o["@attributes"][el.attributes[a].name]=el.attributes[a].value; } var kids={}; var has=false; for(var n=0;n<el.childNodes.length;n++){ var c=el.childNodes[n]; if(c.nodeType===3){ var tx=c.textContent.trim(); if(tx) o["#text"]=tx; } else if(c.nodeType===1){ has=true; var v=x2o(c); if(kids[c.tagName]){ if(!Array.isArray(kids[c.tagName])) kids[c.tagName]=[kids[c.tagName]]; kids[c.tagName].push(v); } else kids[c.tagName]=v; } } Object.assign(o,kids); return has||o["@attributes"]?o:(o["#text"]||""); }
+    var root={}; root[doc.documentElement.tagName]=x2o(doc.documentElement);
+    return {blob:new Blob([JSON.stringify(root,null,2)],{type:"application/json"}), name:name+".json"};
+  }
+  if(item.cat==="json" && (to==="yaml"||to==="xml")){
+    var jobj=JSON.parse(text);
+    if(to==="yaml"){ if(!window.jsyaml) throw new Error("YAML library did not load."); return {blob:new Blob([jsyaml.dump(jobj)],{type:"text/yaml"}), name:name+".yaml"}; }
+    function escX(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+    function toXml(tag,val){ if(Array.isArray(val)) return val.map(function(v){return toXml(tag,v)}).join(""); if(val&&typeof val==="object"){ return "<"+tag+">"+Object.keys(val).map(function(k){return toXml(k.replace(/[^a-zA-Z0-9_-]/g,"_"),val[k])}).join("")+"</"+tag+">"; } return "<"+tag+">"+escX(val==null?"":val)+"</"+tag+">"; }
+    return {blob:new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+toXml("root",jobj)],{type:"application/xml"}), name:name+".xml"};
+  }
+  if(item.cat==="md"){
+    if(to==="html") return {blob:new Blob(["<!doctype html><html><body>"+marked.parse(text)+"</body></html>"],{type:"text/html"}), name:name+".html"};
+    if(to==="txt"){ var tmp=document.createElement("div"); tmp.innerHTML=marked.parse(text); return {blob:new Blob([tmp.textContent],{type:"text/plain"}), name:name+".txt"}; }
+    var tmp2=document.createElement("div"); tmp2.innerHTML=marked.parse(text); return {blob:textToPdfBlob(f.name, tmp2.textContent), name:name+".pdf"};
+  }
+  if(item.cat==="txt"){
+    if(to==="pdf") return {blob:textToPdfBlob(f.name,text), name:name+".pdf"};
+    if(to==="html") return {blob:new Blob(["<!doctype html><html><body><pre style=\"font-family:system-ui;white-space:pre-wrap\">"+escapeHtml(text)+"</pre></body></html>"],{type:"text/html"}), name:name+".html"};
+    return {blob:new Blob([text],{type:"text/markdown"}), name:name+".md"};
+  }
+  if(item.cat==="html"){
+    var d=document.createElement("div"); d.innerHTML=text; var plain=d.textContent||"";
+    if(to==="txt") return {blob:new Blob([plain],{type:"text/plain"}), name:name+".txt"};
+    return {blob:textToPdfBlob(f.name,plain), name:name+".pdf"};
+  }
+  if(item.cat==="csv"||item.cat==="json"||item.cat==="xlsx"){
+    var rows=null;
+    if(item.cat==="csv"){ rows=Papa.parse(text,{header:true,skipEmptyLines:true}).data; }
+    else if(item.cat==="json"){ var parsed=JSON.parse(text); rows=Array.isArray(parsed)?parsed:[parsed]; }
+    else { var wb=XLSX.read(await f.arrayBuffer(),{type:"array"}); var ws=wb.Sheets[wb.SheetNames[0]]; rows=XLSX.utils.sheet_to_json(ws); }
+    if(!rows||!rows.length) throw new Error("No table rows found in that file.");
+    if(to==="json") return {blob:new Blob([JSON.stringify(rows,null,2)],{type:"application/json"}), name:name+".json"};
+    if(to==="csv") return {blob:new Blob([Papa.unparse(rows)],{type:"text/csv"}), name:name+".csv"};
+    if(to==="txt") return {blob:new Blob([JSON.stringify(rows,null,2)],{type:"text/plain"}), name:name+".txt"};
+    if(to==="xlsx"){ var ws2=XLSX.utils.json_to_sheet(rows); var wb2=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2,ws2,"Sheet1"); var out=XLSX.write(wb2,{bookType:"xlsx",type:"array"}); return {blob:new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), name:name+".xlsx"}; }
+    if(to==="html"){
+      var keys=Object.keys(rows[0]); var html="<!doctype html><html><body><table border=\"1\" cellspacing=\"0\" cellpadding=\"6\"><thead><tr>"+keys.map(function(k){return "<th>"+escapeHtml(k)+"</th>"}).join("")+"</tr></thead><tbody>"+rows.map(function(r){return "<tr>"+keys.map(function(k){return "<td>"+escapeHtml(String(r[k]==null?"":r[k]))+"</td>"}).join("")+"</tr>"}).join("")+"</tbody></table></body></html>";
+      return {blob:new Blob([html],{type:"text/html"}), name:name+".html"};
+    }
+    if(to==="pdf"){
+      var keys2=Object.keys(rows[0]); var lines=[keys2.join("  |  ")].concat(rows.map(function(r){return keys2.map(function(k){return String(r[k]==null?"":r[k])}).join("  |  ")}));
+      return {blob:textToPdfBlob(f.name, lines.join("\n")), name:name+".pdf"};
+    }
+  }
+  throw new Error("That conversion isn't supported.");
+}
+
+async function convertAll(){
+  var todo=items.filter(function(i){return targetsFor(i.cat,i.ext).length});
+  if(!todo.length) return;
+  var bar=$("progress"); bar.style.display="block"; var fill=bar.querySelector("i"); var done=0; var failed=0;
+  for(var idx=0; idx<todo.length; idx++){
+    var item=todo[idx]; item.status="Converting…"; item.err=false; render();
+    try{ item.result=await convertOne(item); item.status=""; }
+    catch(e){ item.result=null; failed++; var msg=e.message||"error"; if(/jsPDF|jspdf/i.test(msg)||msg.indexOf("undefined")>-1) msg="A conversion library didn't load — check your connection and try again."; item.status="Failed: "+msg; item.err=true; }
+    done++; fill.style.width=Math.round(done/todo.length*100)+"%"; render();
+  }
+  if(failed===0) showToast("Done — download your converted files below.");
+  else if(failed<todo.length) showToast("Finished — some files could not be converted. See the notes under each file.");
+  else showToast("Those files could not be converted — see the note under each file.");
+  setTimeout(function(){ bar.style.display="none"; fill.style.width="0%"; },900);
+}
+
+/* events */
+dropzone.addEventListener("click",function(e){ if(e.target.id!=="sampleBtn") input.click(); });
+dropzone.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); input.click(); } });
+input.addEventListener("change",function(){ addFiles(input.files); input.value=""; });
+["dragover","dragenter"].forEach(function(ev){ dropzone.addEventListener(ev,function(e){ e.preventDefault(); dropzone.classList.add("drag"); }); });
+["dragleave","drop"].forEach(function(ev){ dropzone.addEventListener(ev,function(e){ e.preventDefault(); dropzone.classList.remove("drag"); }); });
+dropzone.addEventListener("drop",function(e){ if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+document.addEventListener("paste",function(e){ if(e.clipboardData && e.clipboardData.files.length) addFiles(e.clipboardData.files); });
+$("convertAllBtn").addEventListener("click",convertAll);
+$("clearBtn").addEventListener("click",function(){ items=[]; render(); });
+$("zipBtn").addEventListener("click",async function(){
+  var ready=items.filter(function(i){return i.result}); if(!ready.length) return;
+  var zip=new JSZip(); var seen={};
+  ready.forEach(function(i){ var n=i.result.name; if(seen[n]){ n=n.replace(/(\.[^.]+)$/,"-copy$1"); } seen[n]=1; zip.file(n,i.result.blob); });
+  var zb=await zip.generateAsync({type:"blob"}); download(zb,"converted-files.zip");
+});
+$("combinePdfBtn").addEventListener("click",async function(){
+  var imgs=items.filter(function(i){return i.cat==="image"});
+  if(imgs.length<2) return;
+  try{ var b=await imagesToPdfBlob(imgs.map(function(i){return i.file}), opts()); download(b,"combined-images.pdf"); showToast("Combined PDF downloaded — "+imgs.length+" images inside."); }
+  catch(e){ showToast("Could not combine those images: "+e.message); }
+});
+$("sampleBtn").addEventListener("click",function(e){
+  e.stopPropagation();
+  var c=document.createElement("canvas"); c.width=900; c.height=600; var x=c.getContext("2d");
+  var g=x.createLinearGradient(0,0,900,600); g.addColorStop(0,"#0E6B4F"); g.addColorStop(1,"#E85D2F"); x.fillStyle=g; x.fillRect(0,0,900,600);
+  x.fillStyle="#fff"; x.font="700 54px system-ui"; x.fillText("Sample photo",48,300); x.font="400 26px system-ui"; x.fillText("Generated in your browser to try the converter",48,348);
+  c.toBlob(function(b){ var f=new File([b],"sample-photo.jpg",{type:"image/jpeg"}); addFiles([f]); },"image/jpeg",0.92);
+});
+document.querySelectorAll(".preset").forEach(function(btn){
+  btn.addEventListener("click",function(){
+    document.querySelectorAll(".preset").forEach(function(b){b.classList.remove("active")}); btn.classList.add("active");
+    preferredTo=btn.dataset.to;
+    $("hint").textContent="Preset selected: drop a "+btn.dataset.from.toUpperCase()+" file — it will be set to convert to "+btn.dataset.to.toUpperCase()+".";
+    items.forEach(function(it){ var tg=targetsFor(it.cat,it.ext); if(tg.some(function(x){return x[0]===preferredTo})){ it.to=preferredTo; it.result=null; } });
+    render(); $("studio").scrollIntoView({behavior:"smooth",block:"start"}); dropzone.focus();
+  });
+});
+/* --- Category browser --- */
+var taxFilter="all";
+function renderTaxonomy(){
+  var q=($("taxSearch").value||"").trim().toLowerCase().replace(/^\./,"");
+  var grid=$("catGrid"); grid.innerHTML=""; var shown=0;
+  TAXONOMY.forEach(function(c){
+    var name=c[0], exts=c[1].split(/\s+/), conv=!!c[2];
+    if(taxFilter==="yes"&&!conv) return; if(taxFilter==="no"&&conv) return;
+    if(q && name.toLowerCase().indexOf(q)===-1 && !exts.some(function(e){return e===q||e.indexOf(q)>-1})) return;
+    shown++;
+    var card=document.createElement("div"); card.className="cat-card";
+    var preview=exts.slice(0,10).map(function(e){return '<span class="tag">.'+escapeHtml(e)+'</span>'}).join("");
+    var all=exts.map(function(e){return '<span class="tag">.'+escapeHtml(e)+'</span>'}).join("");
+    card.innerHTML='<h3></h3><div class="cat-meta">'+exts.length+' extensions</div><span class="badge '+(conv?'badge-yes':'badge-no')+'">'+(conv?'Convertible in browser':'Identify only — no conversion')+'</span>'+(conv&&c[3]?'<p class="route-note"><b>Real routes:</b> '+escapeHtml(c[3])+'</p>':'<p class="route-note">Recognised for identification and validation. No conversion button is offered for this category.</p>')+'<div class="tagrow">'+preview+(exts.length>10?' <span class="tag">+'+(exts.length-10)+' more</span>':'')+'</div><details><summary>Show all extensions</summary><div class="ext-list">'+all+'</div></details>';
+    card.querySelector("h3").textContent=name;
+    grid.appendChild(card);
+  });
+  $("taxCount").textContent=shown+" of 48 categories shown"+(q?' for “'+q+'”':"")+" · "+TAXONOMY.reduce(function(a,c){return a+c[1].split(/\s+/).length},0)+" extension entries indexed. Some extensions appear in more than one source category (e.g. .srt in Playlists and Subtitles); detection maps each extension to its most useful category.";
+  if(!shown) grid.innerHTML='<div class="empty">No category or extension matches that search. Try “tar.gz”, “epub”, “srt” or “fonts”.</div>';
+}
+if($("taxSearch")){ $("taxSearch").addEventListener("input",renderTaxonomy); document.querySelectorAll(".tax-filter").forEach(function(b){ b.addEventListener("click",function(){ document.querySelectorAll(".tax-filter").forEach(function(x){x.classList.remove("active")}); b.classList.add("active"); taxFilter=b.dataset.filter; renderTaxonomy(); }); }); renderTaxonomy(); }
+
+render();
+})();
+</script>
+</body>
+</html>
